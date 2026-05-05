@@ -1,0 +1,77 @@
+datasets:
+  - key: progan
+    real_path: datasets/progan
+    fake_path: datasets/progan
+    data_mode: wang2020
+  - key: cyclegan
+    real_path: datasets/cyclegan
+    fake_path: datasets/cyclegan
+    data_mode: wang2020
+  - key: biggan
+    real_path: datasets/biggan
+    fake_path: datasets/biggan
+    data_mode: wang2020
+  - key: stylegan
+    real_path: datasets/stylegan
+    fake_path: datasets/stylegan
+    data_mode: wang2020
+  - key: gaugan
+    real_path: datasets/gaugan
+    fake_path: datasets/gaugan
+    data_mode: wang2020
+  - key: stargan
+    real_path: datasets/stargan
+    fake_path: datasets/stargan
+    data_mode: wang2020
+  - key: deepfake
+    real_path: datasets/deepfake
+    fake_path: datasets/deepfake
+    data_mode: wang2020
+  - key: sitd
+    real_path: datasets/seeingdark
+    fake_path: datasets/seeingdark
+    data_mode: wang2020
+  - key: san
+    real_path: datasets/san
+    fake_path: datasets/san
+    data_mode: wang2020
+  - key: crn
+    real_path: datasets/crn
+    fake_path: datasets/crn
+    data_mode: wang2020
+  - key: imle
+    real_path: datasets/imle
+    fake_path: datasets/imle
+    data_mode: wang2020
+  - key: guided
+    real_path: diffusion_datasets/imagenet
+    fake_path: diffusion_datasets/guided
+    data_mode: wang2020
+  - key: ldm_200
+    real_path: diffusion_datasets/laion
+    fake_path: diffusion_datasets/ldm_200
+    data_mode: wang2020
+  - key: ldm_200_cfg
+    real_path: diffusion_datasets/laion
+    fake_path: diffusion_datasets/ldm_200_cfg
+    data_mode: wang2020
+  - key: ldm_100
+    real_path: diffusion_datasets/laion
+    fake_path: diffusion_datasets/ldm_100
+    data_mode: wang2020
+  - key: glide_100_27
+    real_path: diffusion_datasets/laion
+    fake_path: diffusion_datasets/glide_100_27
+    data_mode: wang2020
+  - key: glide_50_27
+    real_path: diffusion_datasets/laion
+    fake_path: diffusion_datasets/glide_50_27
+    data_mode: wang2020
+  - key: glide_100_10
+    real_path: diffusion_datasets/laion
+    fake_path: diffusion_datasets/glide_100_10
+    data_mode: wang2020
+  - key: dalle
+    real_path: diffusion_datasets/laion
+    fake_path: diffusion_datasets/dalle
+    data_mode: wang2020

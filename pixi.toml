@@ -1,0 +1,29 @@
+[workspace]
+channels = ["pytorch", "nvidia", "conda-forge"]
+name = "BUAA-AISafety-Project"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[dependencies]
+python = "3.10.*"
+pytorch = ">=2.1.0"
+torchvision = ">=0.16.0"
+pytorch-cuda = "12.1.*"
+tqdm = "*"
+pillow = "*"
+scipy = "*"
+scikit-learn = "*"
+opencv = "*"
+scikit-image = "*"
+tensorboardx = ">=2.6.2.2,<3"
+tensorboard = ">=2.20.0,<3"
+imageio = ">=2.37.0,<3"
+pyyaml = ">=6.0.3,<7"
+pynvml = ">=13.0.1,<14"
+
+[pypi-dependencies]
+ftfy = "*"
+regex = "*"
+clip = { git = "https://github.com/openai/CLIP.git" }
+
+[tasks]

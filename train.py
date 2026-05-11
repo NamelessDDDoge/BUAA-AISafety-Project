@@ -1,17 +1,109 @@
 import argparse
 import os
 import time
+from copy import deepcopy
 
-from earlystop import EarlyStopping
-from tensorboardX import SummaryWriter
+import torch
+import torch.nn as nn
+from torch.nn import init
 
-from data import create_dataloader
-from models import get_model
-from networks.trainer import Trainer
-
-from .test import validate
+from utils.earlystop import EarlyStopping
 
 """Currently assumes jpg_prob, blur_prob 0 or 1"""
+
+
+class Trainer(nn.Module):
+    def name(self):
+        return "Trainer"
+
+    def __init__(self, opt):
+        from models import get_model
+
+        super(Trainer, self).__init__()
+        self.opt = opt
+        self.total_steps = 0
+        self.save_dir = os.path.join(opt.checkpoints_dir, opt.name)
+        if not os.path.exists(self.save_dir):
+            os.makedirs(self.save_dir)
+
+        self.device = (
+            torch.device(f"cuda:{opt.gpu_ids[0]}")
+            if opt.gpu_ids
+            else torch.device("cpu")
+        )
+
+        self.model = get_model(opt.arch)
+
+        init.normal_(self.model.fc.weight.data, 0.0, opt.init_gain)
+
+        if opt.fix_backbone:
+            params = []
+            for name, p in self.model.named_parameters():
+                if name == "fc.weight" or name == "fc.bias":
+                    params.append(p)
+                else:
+                    p.requires_grad = False
+        else:
+            print(
+                "Your backbone is not fixed. Are you sure you want to proceed? If this is a mistake, enable the --fix_backbone command during training and rerun"
+            )
+            time.sleep(3)
+            params = self.model.parameters()
+
+        if opt.optim == "adam":
+            self.optimizer = torch.optim.AdamW(
+                params,
+                lr=opt.lr,
+                betas=(opt.beta1, 0.999),
+                weight_decay=opt.weight_decay,
+            )
+        elif opt.optim == "sgd":
+            self.optimizer = torch.optim.SGD(
+                params, lr=opt.lr, momentum=0.0, weight_decay=opt.weight_decay
+            )
+        else:
+            raise ValueError("Optim should be [adam, sgd]")
+
+        self.loss_fn = nn.BCEWithLogitsLoss()
+        self.model.to(self.device)
+
+    def save_networks(self, save_filename):
+        save_path = os.path.join(self.save_dir, save_filename)
+        state_dict = self.model.fc.state_dict()
+        torch.save(state_dict, save_path)
+        print(f"FC layer weights saved to {save_path}")
+
+    def eval(self):
+        self.model.eval()
+
+    def test(self):
+        with torch.no_grad():
+            self.forward()
+
+    def adjust_learning_rate(self, min_lr=1e-6):
+        for param_group in self.optimizer.param_groups:
+            param_group["lr"] /= 10.0
+            if param_group["lr"] < min_lr:
+                return False
+        return True
+
+    def set_input(self, input):
+        self.input = input[0].to(self.device)
+        self.label = input[1].to(self.device).float()
+
+    def forward(self):
+        self.output = self.model(self.input)
+        self.output = self.output.view(-1).unsqueeze(1)
+
+    def get_loss(self):
+        return self.loss_fn(self.output.squeeze(1), self.label)
+
+    def optimize_parameters(self):
+        self.forward()
+        self.loss = self.loss_fn(self.output.squeeze(1), self.label)
+        self.optimizer.zero_grad()
+        self.loss.backward()
+        self.optimizer.step()
 
 
 def get_train_opt():
@@ -67,10 +159,10 @@ def get_train_opt():
     )
     parser.add_argument(
         "--real_list_path", type=str, default=""
-    )  # data_mode='ours' 时才用
+    )  # only used when data_mode='ours'
     parser.add_argument(
         "--fake_list_path", type=str, default=""
-    )  # data_mode='ours' 时才用
+    )  # only used when data_mode='ours'
 
     opt = parser.parse_args()
     opt.isTrain = True
@@ -83,8 +175,6 @@ def get_train_opt():
 
 
 def get_val_opt(train_opt):
-    from copy import deepcopy
-
     val_opt = deepcopy(train_opt)
     val_opt.isTrain = False
     val_opt.no_resize = False
@@ -105,6 +195,10 @@ def get_val_opt(train_opt):
 if __name__ == "__main__":
     opt = get_train_opt()
     val_opt = get_val_opt(opt)
+
+    from data import create_dataloader
+    from tensorboardX import SummaryWriter
+    from test import validate
 
     model = Trainer(opt)
 
@@ -149,7 +243,6 @@ if __name__ == "__main__":
             model.save_networks("model_epoch_best.pth")
             model.save_networks("model_epoch_%s.pth" % epoch)
 
-        # Validation
         model.eval()
         ap, r_acc, f_acc, acc = validate(model.model, val_loader, model.device)
         val_writer.add_scalar("accuracy", acc, model.total_steps)

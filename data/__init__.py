@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from dataset import RealFakeDataset
+from .dataset import RealFakeDataset
 from torch.utils.data.sampler import WeightedRandomSampler
 
 

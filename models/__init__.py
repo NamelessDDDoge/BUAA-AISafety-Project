@@ -1,5 +1,5 @@
 from .clip_binary import CLIPModel
-
+from .imagenet_models import ImagenetModel
 
 VALID_NAMES = [
     'Imagenet:resnet50',
@@ -13,8 +13,6 @@ VALID_NAMES = [
 def get_model(name):
     assert name in VALID_NAMES
     if name.startswith("Imagenet:"):
-        from .imagenet_models import ImagenetModel
-
         return ImagenetModel(name[9:]) 
     elif name.startswith("CLIP:"):
         return CLIPModel(name[5:])  

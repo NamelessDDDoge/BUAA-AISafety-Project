@@ -109,36 +109,46 @@ class Trainer(nn.Module):
 def get_train_opt():
     parser = argparse.ArgumentParser()
 
+    parser.add_argument("--mode", default="binary")
     parser.add_argument("--name", type=str, default="experiment_name")
     parser.add_argument("--checkpoints_dir", type=str, default="./checkpoints")
-    parser.add_argument("--dataroot", type=str, default="./datasets/progan_train")
-    parser.add_argument("--arch", type=str, default="CLIP:ViT-L/14")
+    parser.add_argument("--dataroot", type=str, default=None)
+    parser.add_argument("--arch", type=str, default="res50")
 
-    parser.add_argument("--fix_backbone", action="store_true", default=True)
+    parser.add_argument("--fix_backbone", action="store_true")
     parser.add_argument("--optim", type=str, default="adam", choices=["adam", "sgd"])
+    parser.add_argument("--new_optim", action="store_true")
     parser.add_argument("--init_gain", type=float, default=0.02)
+    parser.add_argument("--init_type", type=str, default="normal")
     parser.add_argument("--beta1", type=float, default=0.9)
-    parser.add_argument("--weight_decay", type=float, default=0.0001)
+    parser.add_argument("--weight_decay", type=float, default=0.0)
+    parser.add_argument("--suffix", default="", type=str)
 
-    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--niter", type=int, default=100)
     parser.add_argument("--earlystop_epoch", type=int, default=5)
+    parser.add_argument("--epoch_count", type=int, default=1)
+    parser.add_argument("--last_epoch", type=int, default=-1)
+    parser.add_argument("--train_split", type=str, default="train")
+    parser.add_argument("--val_split", type=str, default="val")
 
     parser.add_argument("--loss_freq", type=int, default=400)
     parser.add_argument("--save_epoch_freq", type=int, default=1)
 
+    parser.add_argument("--data_aug", action="store_true")
     parser.add_argument("--no_resize", action="store_true")
     parser.add_argument("--no_crop", action="store_true")
     parser.add_argument("--no_flip", action="store_true")
-    parser.add_argument("--rz_interp", type=str, nargs="+", default=["bilinear"])
+    parser.add_argument("--resize_or_crop", type=str, default="scale_and_crop")
+    parser.add_argument("--rz_interp", type=str, nargs="+", default="bilinear")
     parser.add_argument("--loadSize", type=int, default=256)
     parser.add_argument("--cropSize", type=int, default=224)
-    parser.add_argument("--blur_sig", type=float, nargs="+", default=[0.0, 3.0])
+    parser.add_argument("--blur_sig", type=str, nargs="+", default="0.0,3.0")
     parser.add_argument("--blur_prob", type=float, default=0.5)
-    parser.add_argument("--jpg_qual", type=int, nargs="+", default=[30, 100])
+    parser.add_argument("--jpg_qual", type=str, nargs="+", default="30,100")
     parser.add_argument("--jpg_prob", type=float, default=0.5)
-    parser.add_argument("--jpg_method", type=str, nargs="+", default=["pil"])
+    parser.add_argument("--jpg_method", type=str, nargs="+", default="cv2,pil")
 
     parser.add_argument("--serial_batches", action="store_true")
     parser.add_argument("--data_label", type=str, default="train")
@@ -146,26 +156,51 @@ def get_train_opt():
     parser.add_argument("--class_bal", action="store_true")
     parser.add_argument("--num_threads", type=int, default=4)
 
-    parser.add_argument("--gpu_ids", type=int, nargs="+", default=[0])
+    parser.add_argument("--gpu_ids", type=str, default="0")
 
     parser.add_argument(
         "--data_mode",
         type=str,
-        default="wang2020",
+        default="ours",
         choices=["ours", "wang2020", "ours_wang2020"],
     )
+    parser.add_argument("--wang2020_data_path", type=str, default=None)
     parser.add_argument(
-        "--wang2020_data_path", type=str, default="./datasets/progan_train"
-    )
-    parser.add_argument(
-        "--real_list_path", type=str, default=""
+        "--real_list_path", type=str, default=None
     )  # only used when data_mode='ours'
     parser.add_argument(
-        "--fake_list_path", type=str, default=""
+        "--fake_list_path", type=str, default=None
     )  # only used when data_mode='ours'
 
     opt = parser.parse_args()
     opt.isTrain = True
+
+    def split_csv_values(value, convert=str):
+        if isinstance(value, str):
+            values = value.split(",")
+        else:
+            values = []
+            for item in value:
+                values.extend(str(item).split(","))
+        return [convert(item) for item in values if item != ""]
+
+    if opt.suffix:
+        opt.name = opt.name + "_" + opt.suffix.format(**vars(opt))
+
+    opt.rz_interp = split_csv_values(opt.rz_interp)
+    opt.blur_sig = split_csv_values(opt.blur_sig, float)
+    opt.jpg_method = split_csv_values(opt.jpg_method)
+    opt.jpg_qual = split_csv_values(opt.jpg_qual, int)
+    if len(opt.jpg_qual) == 2:
+        opt.jpg_qual = list(range(opt.jpg_qual[0], opt.jpg_qual[1] + 1))
+    elif len(opt.jpg_qual) > 2:
+        raise ValueError("Shouldn't have more than 2 values for --jpg_qual.")
+
+    opt.gpu_ids = [
+        int(gpu_id)
+        for gpu_id in str(opt.gpu_ids).split(",")
+        if gpu_id != "" and int(gpu_id) >= 0
+    ]
 
     expr_dir = os.path.join(opt.checkpoints_dir, opt.name)
     os.makedirs(os.path.join(expr_dir, "train"), exist_ok=True)

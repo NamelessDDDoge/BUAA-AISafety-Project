@@ -2,6 +2,8 @@
 /datasets/
 /result/
 __pycache__/
+checkpoints/
+
 # pixi environments
 .pixi/*
 !.pixi/config.toml

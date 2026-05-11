@@ -22,6 +22,19 @@ MEAN = {"imagenet": [0.485, 0.456, 0.406], "clip": [0.48145466, 0.4578275, 0.408
 STD = {"imagenet": [0.229, 0.224, 0.225], "clip": [0.26862954, 0.26130258, 0.27577711]}
 
 
+def wang2020_split_root(root, data_label):
+    if data_label == "train":
+        candidates = [os.path.join(root, "train", "progan"), os.path.join(root, "train")]
+    else:
+        candidates = [os.path.join(root, "test", "progan")]
+
+    for candidate in candidates:
+        if os.path.isdir(candidate):
+            return candidate
+
+    return candidates[0]
+
+
 def recursively_read(rootdir, must_contain, exts=["png", "jpg", "JPEG", "jpeg"]):
     out = []
     for r, d, f in os.walk(rootdir):
@@ -51,23 +64,19 @@ class RealFakeDataset(Dataset):
             real_list = get_list(os.path.join(opt.real_list_path, pickle_name))
             fake_list = get_list(os.path.join(opt.fake_list_path, pickle_name))
         elif opt.data_mode == "wang2020":
-            temp = "train/progan" if opt.data_label == "train" else "test/progan"
-            real_list = get_list(
-                os.path.join(opt.wang2020_data_path, temp), must_contain="0_real"
-            )
-            fake_list = get_list(
-                os.path.join(opt.wang2020_data_path, temp), must_contain="1_fake"
-            )
+            split_root = wang2020_split_root(opt.wang2020_data_path, opt.data_label)
+            real_list = get_list(split_root, must_contain="0_real")
+            fake_list = get_list(split_root, must_contain="1_fake")
         elif opt.data_mode == "ours_wang2020":
             pickle_name = "train.pickle" if opt.data_label == "train" else "val.pickle"
             real_list = get_list(os.path.join(opt.real_list_path, pickle_name))
             fake_list = get_list(os.path.join(opt.fake_list_path, pickle_name))
-            temp = "train/progan" if opt.data_label == "train" else "test/progan"
+            split_root = wang2020_split_root(opt.wang2020_data_path, opt.data_label)
             real_list += get_list(
-                os.path.join(opt.wang2020_data_path, temp), must_contain="0_real"
+                split_root, must_contain="0_real"
             )
             fake_list += get_list(
-                os.path.join(opt.wang2020_data_path, temp), must_contain="1_fake"
+                split_root, must_contain="1_fake"
             )
 
         # setting the labels for the dataset

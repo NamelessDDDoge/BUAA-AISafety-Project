@@ -1,4 +1,4 @@
-from imagenet import resnet50, vit_b_16
+from .imagenet import resnet50, vit_b_16
 
 from torchvision import transforms
 from PIL import Image

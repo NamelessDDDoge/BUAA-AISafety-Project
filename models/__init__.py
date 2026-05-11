@@ -1,5 +1,5 @@
 from .clip_binary import CLIPModel
-from .imagenet_models import ImagenetModel
+from .imagenet_model import ImagenetModel
 
 VALID_NAMES = [
     'Imagenet:resnet50',

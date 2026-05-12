@@ -3,6 +3,7 @@
 /result/
 __pycache__/
 checkpoints/
+/dataset/
 
 # pixi environments
 .pixi/*
@@ -10,3 +11,4 @@ checkpoints/
 pixi.toml
 pixi.lock
 pyrightconfig.json
+.gitattributes

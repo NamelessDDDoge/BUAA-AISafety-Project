@@ -50,6 +50,11 @@ class Trainer(nn.Module):
             time.sleep(3)
             params = self.model.parameters()
 
+        trainable_params = sum(
+            p.numel() for p in self.model.parameters() if p.requires_grad
+        )
+        print(f"Trainable parameters: {trainable_params}")
+
         if opt.optim == "adam":
             self.optimizer = torch.optim.AdamW(
                 params,
@@ -247,7 +252,8 @@ if __name__ == "__main__":
         patience=opt.earlystop_epoch, delta=-0.001, verbose=True
     )
     start_time = time.time()
-    print("Length of data loader: %d" % (len(data_loader)))
+    print("Length of training data loader: %d" % (len(data_loader)))
+    print("Length of validation data loader: %d" % (len(val_loader)))
     for epoch in range(opt.niter):
         for i, data in enumerate(data_loader):
             model.total_steps += 1

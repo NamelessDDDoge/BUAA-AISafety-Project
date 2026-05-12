@@ -2,6 +2,7 @@ import os
 import pickle
 from copy import deepcopy
 from io import BytesIO
+import random as rnd
 from random import choice, random, shuffle
 
 import cv2
@@ -23,8 +24,11 @@ STD = {"imagenet": [0.229, 0.224, 0.225], "clip": [0.26862954, 0.26130258, 0.275
 
 
 def wang2020_split_root(root, data_label):
-    if data_label == "train":
-        candidates = [os.path.join(root, "train", "progan"), os.path.join(root, "train")]
+    if data_label == "train" or data_label == "val":
+        candidates = [
+            os.path.join(root, "train", "progan"),
+            os.path.join(root, "train"),
+        ]
     else:
         candidates = [os.path.join(root, "test", "progan")]
 
@@ -72,12 +76,24 @@ class RealFakeDataset(Dataset):
             real_list = get_list(os.path.join(opt.real_list_path, pickle_name))
             fake_list = get_list(os.path.join(opt.fake_list_path, pickle_name))
             split_root = wang2020_split_root(opt.wang2020_data_path, opt.data_label)
-            real_list += get_list(
-                split_root, must_contain="0_real"
-            )
-            fake_list += get_list(
-                split_root, must_contain="1_fake"
-            )
+            real_list += get_list(split_root, must_contain="0_real")
+            fake_list += get_list(split_root, must_contain="1_fake")
+
+        real_list.sort()
+        fake_list.sort()
+
+        rng = rnd.Random(42)
+        rng.shuffle(real_list)
+        rng.shuffle(fake_list)
+
+        split_idx = int(len(real_list) * 0.9)
+
+        if self.data_label == "train":
+            real_list = real_list[:split_idx]
+            fake_list = fake_list[:split_idx]
+        else:
+            real_list = real_list[split_idx:]
+            fake_list = fake_list[split_idx:]
 
         # setting the labels for the dataset
         self.labels_dict = {}
@@ -87,6 +103,12 @@ class RealFakeDataset(Dataset):
             self.labels_dict[i] = 1
 
         self.total_list = real_list + fake_list
+
+        if len(self.total_list) == 0:
+            raise ValueError(
+                f"ERROR: No real/fake images found in {split_root}! Please check your data path."
+            )
+
         shuffle(self.total_list)
         if opt.isTrain:
             crop_func = transforms.RandomCrop(opt.cropSize)

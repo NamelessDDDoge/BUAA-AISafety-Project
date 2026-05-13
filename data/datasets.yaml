@@ -1,77 +1,85 @@
 datasets:
   - key: progan
-    real_path: datasets/progan
-    fake_path: datasets/progan
+    real_path: datasets/test/progan
+    fake_path: datasets/test/progan
     data_mode: wang2020
   - key: cyclegan
-    real_path: datasets/cyclegan
-    fake_path: datasets/cyclegan
+    real_path: datasets/test/cyclegan
+    fake_path: datasets/test/cyclegan
     data_mode: wang2020
   - key: biggan
-    real_path: datasets/biggan
-    fake_path: datasets/biggan
+    real_path: datasets/test/biggan
+    fake_path: datasets/test/biggan
     data_mode: wang2020
   - key: stylegan
-    real_path: datasets/stylegan
-    fake_path: datasets/stylegan
+    real_path: datasets/test/stylegan
+    fake_path: datasets/test/stylegan
     data_mode: wang2020
   - key: gaugan
-    real_path: datasets/gaugan
-    fake_path: datasets/gaugan
+    real_path: datasets/test/gaugan
+    fake_path: datasets/test/gaugan
     data_mode: wang2020
   - key: stargan
-    real_path: datasets/stargan
-    fake_path: datasets/stargan
+    real_path: datasets/test/stargan
+    fake_path: datasets/test/stargan
     data_mode: wang2020
   - key: deepfake
-    real_path: datasets/deepfake
-    fake_path: datasets/deepfake
+    real_path: datasets/test/deepfake
+    fake_path: datasets/test/deepfake
     data_mode: wang2020
   - key: sitd
-    real_path: datasets/seeingdark
-    fake_path: datasets/seeingdark
+    real_path: datasets/test/seeingdark
+    fake_path: datasets/test/seeingdark
     data_mode: wang2020
   - key: san
-    real_path: datasets/san
-    fake_path: datasets/san
+    real_path: datasets/test/san
+    fake_path: datasets/test/san
     data_mode: wang2020
   - key: crn
-    real_path: datasets/crn
-    fake_path: datasets/crn
+    real_path: datasets/test/crn
+    fake_path: datasets/test/crn
     data_mode: wang2020
   - key: imle
-    real_path: datasets/imle
-    fake_path: datasets/imle
+    real_path: datasets/test/imle
+    fake_path: datasets/test/imle
+    data_mode: wang2020
+  - key: stylegan2
+    real_path: datasets/test/stylegan2
+    fake_path: datasets/test/stylegan2
+    data_mode: wang2020
+  - key: whichfaceisreal
+    real_path: datasets/test/whichfaceisreal
+    fake_path: datasets/test/whichfaceisreal
     data_mode: wang2020
   - key: guided
-    real_path: diffusion_datasets/imagenet
-    fake_path: diffusion_datasets/guided
+    real_path: datasets/test/imagenet
+    fake_path: datasets/test/guided
     data_mode: wang2020
   - key: ldm_200
-    real_path: diffusion_datasets/laion
-    fake_path: diffusion_datasets/ldm_200
+    real_path: datasets/test/laion
+    fake_path: datasets/test/ldm_200
     data_mode: wang2020
   - key: ldm_200_cfg
-    real_path: diffusion_datasets/laion
-    fake_path: diffusion_datasets/ldm_200_cfg
+    real_path: datasets/test/laion
+    fake_path: datasets/test/ldm_200_cfg
     data_mode: wang2020
   - key: ldm_100
-    real_path: diffusion_datasets/laion
-    fake_path: diffusion_datasets/ldm_100
+    real_path: datasets/test/laion
+    fake_path: datasets/test/ldm_100
     data_mode: wang2020
   - key: glide_100_27
-    real_path: diffusion_datasets/laion
-    fake_path: diffusion_datasets/glide_100_27
+    real_path: datasets/test/laion
+    fake_path: datasets/test/glide_100_27
     data_mode: wang2020
   - key: glide_50_27
-    real_path: diffusion_datasets/laion
-    fake_path: diffusion_datasets/glide_50_27
+    real_path: datasets/test/laion
+    fake_path: datasets/test/glide_50_27
     data_mode: wang2020
   - key: glide_100_10
-    real_path: diffusion_datasets/laion
-    fake_path: diffusion_datasets/glide_100_10
+    real_path: datasets/test/laion
+    fake_path: datasets/test/glide_100_10
     data_mode: wang2020
   - key: dalle
-    real_path: diffusion_datasets/laion
-    fake_path: diffusion_datasets/dalle
+    real_path: datasets/test/laion
+    fake_path: datasets/test/dalle
     data_mode: wang2020

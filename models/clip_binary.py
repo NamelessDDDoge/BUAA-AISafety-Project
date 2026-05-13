@@ -1,7 +1,9 @@
 from .clip import clip 
+from pathlib import Path
 from PIL import Image
 import torch.nn as nn
 
+CLIP_DOWNLOAD_ROOT = Path(__file__).resolve().parent.parent / "weights"
 
 CHANNELS = {
     "RN50" : 1024,
@@ -12,7 +14,9 @@ class CLIPModel(nn.Module):
     def __init__(self, name, num_classes=1):
         super(CLIPModel, self).__init__()
 
-        self.model, self.preprocess = clip.load(name, device="cpu") # self.preprecess will not be used during training, which is handled in Dataset class 
+        self.model, self.preprocess = clip.load(
+            name, device="cpu", download_root=str(CLIP_DOWNLOAD_ROOT)
+        ) # self.preprecess will not be used during training, which is handled in Dataset class 
         self.fc = nn.Linear( CHANNELS[name], num_classes )
  
 

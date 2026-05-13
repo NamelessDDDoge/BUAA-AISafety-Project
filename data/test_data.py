@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import os
 from pathlib import Path
 import pickle
 import random
@@ -119,13 +120,18 @@ def list_images(path, must_contain=""):
     if not path.is_absolute():
         path = PROJECT_ROOT / path
 
-    return sorted(
-        str(item)
-        for item in path.rglob("*")
-        if item.is_file()
-        and item.suffix.lower() in IMAGE_EXTS
-        and must_contain in str(item)
-    )
+    images = []
+    for root, _, files in os.walk(path):
+        if must_contain and must_contain not in root:
+            continue
+        for filename in files:
+            if Path(filename).suffix.lower() not in IMAGE_EXTS:
+                continue
+            item = os.path.join(root, filename)
+            if must_contain and must_contain not in item:
+                continue
+            images.append(item)
+    return sorted(images)
 
 
 def read_real_fake_paths(spec, max_sample=None, seed=0):
@@ -145,11 +151,18 @@ def read_real_fake_paths(spec, max_sample=None, seed=0):
         else:
             raise ValueError(f"Unsupported data_mode: {spec.data_mode}")
     
-    assert len(reals) == len(fakes)  
+    if not reals or not fakes:
+        raise ValueError(
+            f"{spec.key} requires at least one real and one fake image; "
+            f"found real={len(reals)} fake={len(fakes)}"
+        )
 
     if max_sample is not None:
         if (max_sample > len(reals)) or (max_sample > len(fakes)):
-            raise ValueError('Images not enough')
+            raise ValueError(
+                f"Images not enough for {spec.key}: requested {max_sample} per class, "
+                f"found real={len(reals)} fake={len(fakes)}"
+            )
         rng = random.Random(seed)
         rng.shuffle(reals)
         rng.shuffle(fakes)

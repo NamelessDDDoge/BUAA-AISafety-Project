@@ -2,9 +2,9 @@
 set -euo pipefail
 
 python train.py \
-  --name clip_vitl14 \
+  --name imagenet_res50 \
   --checkpoints_dir ./checkpoints \
-  --arch CLIP:ViT-L/14 \
+  --arch Imagenet:resnet50 \
   --fix_backbone \
   --optim adam \
   --init_gain 0.02 \
@@ -22,9 +22,9 @@ python train.py \
   --blur_sig 0.0 3.0 \
   --blur_prob 0.5 \
   --jpg_prob 0.5 \
-  --jpg_method cv2,pil \
+  --jpg_method cv2 pil \
   --data_label train \
-  --num_threads 0 \
+  --num_threads 8 \
   --gpu_ids 0 \
   --data_mode wang2020 \
   --wang2020_data_path ./datasets \

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import pdfplumber; pdf = pdfplumber.open\\('paper.pdf'\\); print\\(pdf.pages[0].extract_text\\(\\)\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(dir /s /b \"c:\\\\Users\\\\admin\\\\Desktop\\\\AISafety\\\\datasets\")"
+    ]
+  }
+}

@@ -1,9 +1,11 @@
 /weights/
 /datasets/
+/dataset/
 /result/
 __pycache__/
 checkpoints/
 .omx/
+/unitTests/
 
 # pixi environments
 .pixi/*
@@ -11,3 +13,7 @@ checkpoints/
 pixi.toml
 pixi.lock
 pyrightconfig.json
+.gitattributes
+
+# paper
+*.pdf

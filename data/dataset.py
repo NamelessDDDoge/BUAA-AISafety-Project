@@ -18,9 +18,17 @@ from torch.utils.data import Dataset
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
-MEAN = {"imagenet": [0.485, 0.456, 0.406], "clip": [0.48145466, 0.4578275, 0.40821073]}
+MEAN = {
+    "imagenet": [0.485, 0.456, 0.406],
+    "clip": [0.48145466, 0.4578275, 0.40821073],
+    "xception": [0.485, 0.456, 0.406],
+}
 
-STD = {"imagenet": [0.229, 0.224, 0.225], "clip": [0.26862954, 0.26130258, 0.27577711]}
+STD = {
+    "imagenet": [0.229, 0.224, 0.225],
+    "clip": [0.26862954, 0.26130258, 0.27577711],
+    "xception": [0.229, 0.224, 0.225],
+}
 
 
 def wang2020_split_root(root, data_label):
@@ -126,7 +134,12 @@ class RealFakeDataset(Dataset):
         else:
             rz_func = transforms.Lambda(lambda img: custom_resize(img, opt))
 
-        stat_from = "imagenet" if opt.arch.lower().startswith("imagenet") else "clip"
+        stat_from = (
+            "imagenet"
+            if opt.arch.lower().startswith("imagenet")
+            or opt.arch.lower().startswith("xception")
+            else "clip"
+        )
 
         print("mean and std stats are from: ", stat_from)
         if "2b" not in opt.arch:

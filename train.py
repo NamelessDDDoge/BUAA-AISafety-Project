@@ -32,9 +32,13 @@ class Trainer(nn.Module):
             else torch.device("cpu")
         )
 
-        self.model = get_model(opt.arch)
+        self.model = get_model(opt)
 
-        init.normal_(self.model.fc.weight.data, 0.0, opt.init_gain)
+        if opt.arch == "xception":
+            self.loss_fn = nn.CrossEntropyLoss()
+        else:
+            self.loss_fn = nn.BCEWithLogitsLoss()
+            init.normal_(self.model.fc.weight.data, 0.0, opt.init_gain)
 
         if opt.fix_backbone:
             params = []
@@ -69,7 +73,6 @@ class Trainer(nn.Module):
         else:
             raise ValueError("Optim should be [adam, sgd]")
 
-        self.loss_fn = nn.BCEWithLogitsLoss()
         self.model.to(self.device)
 
     def save_networks(self, save_filename):
@@ -77,6 +80,18 @@ class Trainer(nn.Module):
         state_dict = self.model.fc.state_dict()
         torch.save(state_dict, save_path)
         print(f"FC layer weights saved to {save_path}")
+
+    def save_whole_ckpt(self, save_filename):
+        checkpoint_path = os.path.join(self.save_dir, save_filename)
+        checkpoint = {
+            "epoch": epoch,
+            "model_state_dict": self.model.state_dict(),
+            "optimizer_state_dict": self.optimizer.state_dict(),
+            "best_ap": best_ap,
+            "total_steps": self.total_steps,
+            "opt": self.opt,
+        }
+        torch.save(checkpoint, checkpoint_path)
 
     def eval(self):
         self.model.eval()
@@ -94,18 +109,27 @@ class Trainer(nn.Module):
 
     def set_input(self, input):
         self.input = input[0].to(self.device)
-        self.label = input[1].to(self.device).float()
+        if self.opt.arch == "xception":
+            self.label = input[1].to(self.device).long()
+        else:
+            self.label = input[1].to(self.device).float()
 
     def forward(self):
         self.output = self.model(self.input)
-        self.output = self.output.view(-1).unsqueeze(1)
+        if self.opt.arch != "xception":
+            self.output = self.output.view(-1).unsqueeze(1)
 
     def get_loss(self):
         return self.loss_fn(self.output.squeeze(1), self.label)
 
     def optimize_parameters(self):
         self.forward()
-        self.loss = self.loss_fn(self.output.squeeze(1), self.label)
+        if len(self.output.shape) == 4:
+            n, c, h, w = self.output.shape
+            target_map = self.label.view(-1, 1, 1).expand(n, h, w)
+            self.loss = self.loss_fn(self.output, target_map)
+        else:
+            self.loss = self.loss_fn(self.output.squeeze(1), self.label)
         self.optimizer.zero_grad()
         self.loss.backward()
         self.optimizer.step()
@@ -176,6 +200,13 @@ def get_train_opt():
     parser.add_argument(
         "--fake_list_path", type=str, default=None
     )  # only used when data_mode='ours'
+
+    parser.add_argument("--save_whole_ckpt_freq", type=int, default=0)
+    parser.add_argument(
+        "--continue_train",
+        action="store_true",
+        help="continue training: load the latest model",
+    )
 
     opt = parser.parse_args()
     opt.isTrain = True
@@ -254,6 +285,32 @@ if __name__ == "__main__":
     start_time = time.time()
     print("Length of training data loader: %d" % (len(data_loader)))
     print("Length of validation data loader: %d" % (len(val_loader)))
+
+    if opt.continue_train:
+        checkpoint_path = os.path.join(
+            opt.checkpoints_dir, opt.name, "ckpt_whole_epoch_best.pth"
+        )
+        if os.path.exists(checkpoint_path):
+            print(f"Stored model found at {checkpoint_path}")
+            checkpoint = torch.load(checkpoint_path)
+
+            if checkpoint["opt"] != opt:
+                print("Training options don't match.")
+                exit()
+
+            model.model.load_state_dict(checkpoint["model_state_dict"])
+
+            model.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+
+            start_epoch = checkpoint["epoch"] + 1
+            model.total_steps = checkpoint["total_steps"]
+            best_ap = checkpoint["best_ap"]
+        else:
+            print(f"Stored model not found at {checkpoint_path}")
+            exit()
+    else:
+        best_ap = 0
+
     for epoch in range(opt.niter):
         for i, data in enumerate(data_loader):
             model.total_steps += 1
@@ -281,8 +338,11 @@ if __name__ == "__main__":
 
         if epoch % opt.save_epoch_freq == 0:
             print("saving the model at the end of epoch %d" % (epoch))
-            model.save_networks("model_epoch_best.pth")
             model.save_networks("model_epoch_%s.pth" % epoch)
+
+        if opt.save_whole_ckpt_freq != 0 and epoch % opt.save_whole_ckpt_freq == 0:
+            print("saving the whole checkpoint at the end of epoch %d" % (epoch))
+            model.save_whole_ckpt("ckpt_whole_epoch_latest.pth")
 
         model.eval()
         ap, r_acc, f_acc, acc = validate(model.model, val_loader, model.device)
@@ -290,7 +350,12 @@ if __name__ == "__main__":
         val_writer.add_scalar("ap", ap, model.total_steps)
         print("(Val @ epoch {}) acc: {}; ap: {}".format(epoch, acc, ap))
 
-        early_stopping(acc, model)
+        if ap > best_ap:
+            best_ap = ap
+            model.save_networks("model_epoch_best.pth")
+            model.save_whole_ckpt("ckpt_whole_epoch_best.pth")
+
+        early_stopping(ap, model)
         if early_stopping.early_stop:
             cont_train = model.adjust_learning_rate()
             if cont_train:

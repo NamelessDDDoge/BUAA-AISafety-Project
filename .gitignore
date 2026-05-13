@@ -17,3 +17,6 @@ pyrightconfig.json
 
 # paper
 *.pdf
+
+# pretrained models
+/pretrain/

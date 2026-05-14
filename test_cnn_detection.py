@@ -2,21 +2,28 @@
 
 Supports blur_jpg_prob0.1.pth and blur_jpg_prob0.5.pth checkpoints.
 
---dataroot must point to a directory whose immediate subdirectories are
-test categories (e.g. biggan/, progan/, ...).  Each category folder must
-follow the ImageFolder layout expected by torchvision:
-
-    <dataroot>/<category>/0_real/<images>
-    <dataroot>/<category>/1_fake/<images>
+Dataset source (mutually exclusive):
+  --config   path to datasets.yaml (same format used by test.py); evaluates
+             every entry in the YAML, including diffusion datasets that have
+             separate real_path / fake_path.
+  --dataroot scan every immediate subdirectory for 0_real/ + 1_fake/ images
+             at any nesting depth.  Categories missing either class are skipped.
 
 Results (per-category AP and Acc, plus overall mAP / mAcc) are written
 to --result_folder.
 
-Example
--------
+Examples
+--------
+# YAML-driven (recommended, covers diffusion datasets correctly)
+python test_cnn_detection.py \\
+    --config data/datasets.yaml \\
+    --model_path weights/blur_jpg_prob0.5.pth \\
+    --result_folder result_cnn
+
+# Directory scan (GAN-only datasets that contain self-paired 0_real/1_fake)
 python test_cnn_detection.py \\
     --dataroot datasets/test \\
-    --model_path /path/to/blur_jpg_prob0.5.pth \\
+    --model_path weights/blur_jpg_prob0.5.pth \\
     --result_folder result_cnn
 """
 import argparse
@@ -25,13 +32,16 @@ import shutil
 
 import numpy as np
 import torch
+from PIL import Image
 from sklearn.metrics import average_precision_score
-from torchvision import datasets, transforms
+from torchvision import transforms
 
+from data.test_data import load_test_dataset_specs
 from models import get_model
 from utils.reproducibility import set_seed
 
 SEED = 0
+_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp"}
 
 
 def _get_transform():
@@ -46,8 +56,41 @@ def _get_transform():
     ])
 
 
-def _get_dataloader(root, batch_size, num_workers):
-    dataset = datasets.ImageFolder(root=root, transform=_get_transform())
+def _list_images(root, must_contain):
+    results = []
+    for dirpath, _, filenames in os.walk(root):
+        if must_contain not in dirpath:
+            continue
+        for fname in filenames:
+            if os.path.splitext(fname)[1].lower() in _IMAGE_EXTS:
+                results.append(os.path.join(dirpath, fname))
+    return results
+
+
+class _RealFakeDataset(torch.utils.data.Dataset):
+    def __init__(self, real_root, fake_root, transform):
+        reals = _list_images(real_root, "0_real")
+        fakes = _list_images(fake_root, "1_fake")
+        if not reals:
+            raise ValueError(f"No 0_real images found under {real_root}")
+        if not fakes:
+            raise ValueError(f"No 1_fake images found under {fake_root}")
+        self.samples = [(p, 0) for p in reals] + [(p, 1) for p in fakes]
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        path, label = self.samples[idx]
+        img = Image.open(path).convert("RGB")
+        if self.transform:
+            img = self.transform(img)
+        return img, label
+
+
+def _get_dataloader_from_paths(real_root, fake_root, batch_size, num_workers):
+    dataset = _RealFakeDataset(real_root, fake_root, transform=_get_transform())
     return torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
@@ -57,8 +100,12 @@ def _get_dataloader(root, batch_size, num_workers):
 
 
 def _load_weights(model, model_path, device):
-    """Load checkpoint, stripping common multi-GPU prefixes."""
     ckpt = torch.load(model_path, map_location=device)
+    # Unwrap nested checkpoint format {'model': state_dict, 'optimizer': ..., ...}
+    if isinstance(ckpt, dict) and "model" in ckpt and not any(
+        isinstance(v, torch.Tensor) for v in ckpt.values()
+    ):
+        ckpt = ckpt["model"]
     cleaned = {}
     for k, v in ckpt.items():
         for prefix in ("model.", "module.", "net."):
@@ -79,8 +126,11 @@ if __name__ == "__main__":
         description="CNNDetection Baseline Test (Wang et al. 2020)",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--dataroot", required=True,
-                        help="test dataset root; immediate subdirs are categories")
+    parser.add_argument("--dataroot", default=None,
+                        help="test dataset root; immediate subdirs are categories "
+                             "(skips any subdir missing 0_real or 1_fake)")
+    parser.add_argument("--config", default=None,
+                        help="datasets.yaml path (preferred; covers diffusion datasets)")
     parser.add_argument("--model_path", required=True,
                         help="path to .pth checkpoint")
     parser.add_argument("--arch", type=str, default="CNNDetection:resnet50")
@@ -94,43 +144,57 @@ if __name__ == "__main__":
         shutil.rmtree(opt.result_folder)
     os.makedirs(opt.result_folder)
 
+    if opt.config is None and opt.dataroot is None:
+        raise SystemExit("Provide either --config or --dataroot.")
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}", flush=True)
 
-    model = get_model(opt.arch)
+    model = get_model(opt)
     model = _load_weights(model, opt.model_path, device)
     model.to(device)
     model.eval()
     print(f"Model loaded: {opt.model_path}\n", flush=True)
 
-    cls_dirs = sorted([
-        os.path.join(opt.dataroot, d)
-        for d in os.listdir(opt.dataroot)
-        if os.path.isdir(os.path.join(opt.dataroot, d))
-    ])
-    if not cls_dirs:
-        raise SystemExit(f"No category subdirectories found under: {opt.dataroot}")
-
-    print(f"Found {len(cls_dirs)} categories: {[os.path.basename(d) for d in cls_dirs]}\n",
-          flush=True)
+    # Build (name, real_root, fake_root) list from yaml or directory scan
+    if opt.config is not None:
+        specs = load_test_dataset_specs(opt.config)
+        eval_specs = [(s.key, s.real_path, s.fake_path) for s in specs]
+        print(f"Loaded {len(eval_specs)} entries from {opt.config}\n", flush=True)
+    else:
+        subdirs = sorted([
+            os.path.join(opt.dataroot, d)
+            for d in os.listdir(opt.dataroot)
+            if os.path.isdir(os.path.join(opt.dataroot, d))
+        ])
+        if not subdirs:
+            raise SystemExit(f"No subdirectories found under: {opt.dataroot}")
+        eval_specs = [(os.path.basename(d), d, d) for d in subdirs]
+        print(f"Found {len(eval_specs)} subdirectories under {opt.dataroot}\n", flush=True)
 
     all_aps, all_accs = [], []
 
     with torch.no_grad():
-        for idx, cls_path in enumerate(cls_dirs, start=1):
-            cls_name = os.path.basename(cls_path)
-            loader = _get_dataloader(cls_path, opt.batch_size, opt.num_workers)
-            print(f"[{idx}/{len(cls_dirs)}] {cls_name}: {len(loader.dataset)} samples",
+        for idx, (cls_name, real_root, fake_root) in enumerate(eval_specs, start=1):
+            try:
+                loader = _get_dataloader_from_paths(
+                    real_root, fake_root, opt.batch_size, opt.num_workers
+                )
+            except ValueError as exc:
+                print(f"[{idx}/{len(eval_specs)}] {cls_name}: SKIP — {exc}", flush=True)
+                continue
+
+            print(f"[{idx}/{len(eval_specs)}] {cls_name}: {len(loader.dataset)} samples",
                   flush=True)
 
             logits_list, labels_list = [], []
             for imgs, lbls in loader:
                 out = model(imgs.to(device)).flatten()
-                logits_list.extend(out.cpu().numpy())
-                labels_list.extend(lbls.numpy())
+                logits_list.extend(out.cpu().tolist())
+                labels_list.extend(lbls.tolist())
 
-            y_true = np.array(labels_list)
-            y_logits = np.array(logits_list)
+            y_true = np.array(labels_list, dtype=np.int32)
+            y_logits = np.array(logits_list, dtype=np.float32)
             y_prob = 1.0 / (1.0 + np.exp(-y_logits))
 
             ap = average_precision_score(y_true, y_logits) * 100

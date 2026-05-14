@@ -39,7 +39,15 @@ def validate(model, loader, device, find_thres=False):
         for img, label in loader:
             in_tens = img.to(device)
 
-            y_pred.extend(model(in_tens).sigmoid().flatten().tolist())
+            output = model(in_tens)
+
+            if len(output.shape) == 4:
+                probs = torch.softmax(output, dim=1)
+                scores = torch.mean(probs[:, 1, :, :], dim=(1, 2))
+            else:
+                scores = output.sigmoid().flatten()
+
+            y_pred.extend(scores.tolist())
             y_true.extend(label.flatten().tolist())
 
     y_true, y_pred = np.array(y_true), np.array(y_pred)

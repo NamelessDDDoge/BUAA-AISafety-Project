@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 import torch
 from torch.utils.data.sampler import WeightedRandomSampler
@@ -17,6 +18,14 @@ def get_bal_sampler(dataset):
     return sampler
 
 
+def seed_worker(worker_id):
+    worker_seed = (torch.initial_seed() + worker_id) % 2**32
+    np.random.seed(worker_seed)
+    torch.manual_seed(worker_seed)
+    cv2.setNumThreads(0)
+    cv2.ocl.setUseOpenCL(False)
+
+
 def create_dataloader(opt, preprocess=None):
     from .dataset import RealFakeDataset
 
@@ -32,5 +41,8 @@ def create_dataloader(opt, preprocess=None):
         shuffle=shuffle,
         sampler=sampler,
         num_workers=int(opt.num_threads),
+        pin_memory=True,
+        persistent_workers=True if int(opt.num_threads) > 0 else False,
+        worker_init_fn=seed_worker,
     )
     return data_loader

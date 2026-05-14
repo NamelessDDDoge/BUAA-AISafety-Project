@@ -134,7 +134,7 @@ def list_images(path, must_contain=""):
     return sorted(images)
 
 
-def read_real_fake_paths(spec, max_sample=None, seed=0):
+def read_real_fake_paths(spec, max_sample=None):
     # 按数据集模式读取真假图片路径；wang2020 约定文件名含 0_real 和 1_fake。
     real_paths = spec.real_path if isinstance(spec.real_path, list) else [spec.real_path]
     fake_paths = spec.fake_path if isinstance(spec.fake_path, list) else [spec.fake_path]
@@ -163,9 +163,8 @@ def read_real_fake_paths(spec, max_sample=None, seed=0):
                 f"Images not enough for {spec.key}: requested {max_sample} per class, "
                 f"found real={len(reals)} fake={len(fakes)}"
             )
-        rng = random.Random(seed)
-        rng.shuffle(reals)
-        rng.shuffle(fakes)
+        random.shuffle(reals)
+        random.shuffle(fakes)
         reals = reals[:max_sample]
         fakes = fakes[:max_sample]
 
@@ -175,12 +174,12 @@ def read_real_fake_paths(spec, max_sample=None, seed=0):
 class TestDataset(Dataset):
     """Test-only real/fake image reader. Labels: real=0, fake=1."""
 
-    def __init__(self, spec, max_sample=None, seed=0, 
+    def __init__(self, spec, max_sample=None,
                  arch="res50",
                  jpeg_quality=None,
                  gaussian_sigma=None):
         self.spec = spec
-        reals, fakes = read_real_fake_paths(spec, max_sample=max_sample, seed=seed)
+        reals, fakes = read_real_fake_paths(spec, max_sample=max_sample)
         self.samples = [(path, 0) for path in reals] + [(path, 1) for path in fakes]
         self.total_list = reals + fakes
         self.labels_dict = {}

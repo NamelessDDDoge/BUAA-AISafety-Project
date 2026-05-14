@@ -43,14 +43,6 @@ datasets:
     real_path: datasets/test/imle
     fake_path: datasets/test/imle
     data_mode: wang2020
-  - key: stylegan2
-    real_path: datasets/test/stylegan2
-    fake_path: datasets/test/stylegan2
-    data_mode: wang2020
-  - key: whichfaceisreal
-    real_path: datasets/test/whichfaceisreal
-    fake_path: datasets/test/whichfaceisreal
-    data_mode: wang2020
   - key: guided
     real_path: datasets/test/imagenet
     fake_path: datasets/test/guided

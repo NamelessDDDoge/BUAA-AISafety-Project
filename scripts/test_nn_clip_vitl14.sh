@@ -6,7 +6,7 @@ python -u test.py \
   --arch CLIP:ViT-L/14 \
   --config data/datasets.yaml \
   --max_sample 1000 \
-  --batch_size 256 \
+  --batch_size 128 \
   --num_workers 4 \
   --nn_k 1 \
   --nn_bank_path datasets/train \

@@ -20,3 +20,6 @@ pyrightconfig.json
 
 # pretrained models
 /pretrain/
+
+paper_text.txt
+read_pdf.py

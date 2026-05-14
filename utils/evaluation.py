@@ -1,4 +1,3 @@
-from copy import deepcopy
 
 import numpy as np
 import torch
@@ -17,11 +16,8 @@ def find_best_threshold(y_true, y_pred):
     best_acc = 0
     best_thres = 0
     for thres in y_pred:
-        temp = deepcopy(y_pred)
-        temp[temp >= thres] = 1
-        temp[temp < thres] = 0
-
-        acc = (temp == y_true).sum() / y_true.shape[0]
+        temp_pred = (y_pred > thres).astype(float)
+        acc = (temp_pred == y_true).sum() / y_true.shape[0]
         if acc >= best_acc:
             best_thres = thres
             best_acc = acc

@@ -20,7 +20,7 @@ if __name__ == '__main__':
     parser.add_argument('--fake_path', type=str, default=None, help='dir name or a pickle')
     parser.add_argument('--data_mode', type=str, default=None, help='wang2020 or ours')
     parser.add_argument('--config', type=str, default=str(DEFAULT_CONFIG_PATH), help='datasets.yaml path')
-    parser.add_argument('--max_sample', type=int, default=1000, help='only check this number of images for both fake/real')
+    parser.add_argument('--max_sample', type=int, default=None, help='only check this number of images for both fake/real; None means use all available')
 
     parser.add_argument('--method', type=str, default='linear', choices=['linear', 'nn'], help='linear uses the learned fc head; nn uses the paper nearest-neighbor feature bank')
     parser.add_argument('--arch', type=str, default='CLIP:ViT-L/14')

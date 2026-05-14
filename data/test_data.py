@@ -131,7 +131,7 @@ def list_images(path, must_contain=""):
             if must_contain and must_contain not in item:
                 continue
             images.append(item)
-    return sorted(images)
+    return images
 
 
 def read_real_fake_paths(spec, max_sample=None):
@@ -158,15 +158,16 @@ def read_real_fake_paths(spec, max_sample=None):
         )
 
     if max_sample is not None:
-        if (max_sample > len(reals)) or (max_sample > len(fakes)):
-            raise ValueError(
-                f"Images not enough for {spec.key}: requested {max_sample} per class, "
-                f"found real={len(reals)} fake={len(fakes)}"
+        actual = min(max_sample, len(reals), len(fakes))
+        if actual < max_sample:
+            print(
+                f"[Warning] {spec.key}: requested {max_sample} per class but only "
+                f"real={len(reals)} fake={len(fakes)} available; using {actual} per class."
             )
         random.shuffle(reals)
         random.shuffle(fakes)
-        reals = reals[:max_sample]
-        fakes = fakes[:max_sample]
+        reals = reals[:actual]
+        fakes = fakes[:actual]
 
     return reals, fakes
 

@@ -86,14 +86,15 @@ class RealFakeDataset(Dataset):
         rng.shuffle(real_list)
         rng.shuffle(fake_list)
 
-        split_idx = int(len(real_list) * 0.9)
+        real_split = int(len(real_list) * 0.9)
+        fake_split = int(len(fake_list) * 0.9)
 
         if self.data_label == "train":
-            real_list = real_list[:split_idx]
-            fake_list = fake_list[:split_idx]
+            real_list = real_list[:real_split]
+            fake_list = fake_list[:fake_split]
         else:
-            real_list = real_list[split_idx:]
-            fake_list = fake_list[split_idx:]
+            real_list = real_list[real_split:]
+            fake_list = fake_list[fake_split:]
 
         # setting the labels for the dataset
         self.labels_dict = {}
